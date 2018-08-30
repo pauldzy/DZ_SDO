@@ -1780,51 +1780,55 @@ AS
       ,p_project_srid        IN  NUMBER DEFAULT NULL
    ) RETURN MDSYS.SDO_GEOMETRY
    AS
-      sdo_input     MDSYS.SDO_GEOMETRY := p_input;
-      sdo_output    MDSYS.SDO_GEOMETRY;
-      num_tolerance NUMBER := p_tolerance; 
-      str_validate  VARCHAR2(4000 Char);
+      sdo_input       MDSYS.SDO_GEOMETRY := p_input;
+      sdo_output      MDSYS.SDO_GEOMETRY;
+      num_tolerance   NUMBER := p_tolerance; 
+      str_validate    VARCHAR2(4000 Char);
       
    BEGIN
    
       --------------------------------------------------------------------------
       -- Step 10
       -- Check over incoming parameters
-      --------------------------------------------------------------------------
+      --------------------------------------------------------------------------  
+      IF sdo_input IS NULL
+      THEN
+         RETURN NULL;
+         
+      END IF;
+      
       IF num_tolerance IS NULL
       THEN
          num_tolerance := 0.05;
          
       END IF;
       
+      --------------------------------------------------------------------------
+      -- Step 20
+      -- Inspect incoming geometry
+      --------------------------------------------------------------------------
       IF sdo_input.get_gtype() NOT IN (2,6)
       THEN
          RAISE_APPLICATION_ERROR(-20001,'input must be linestring');
          
       END IF;
+   
+      str_validate := MDSYS.SDO_GEOM.VALIDATE_GEOMETRY_WITH_CONTEXT(
+          sdo_input
+         ,num_tolerance
+      );
       
-      IF sdo_input IS NULL
+      IF str_validate = 'TRUE'
       THEN
-         RETURN NULL;
-         
-      ELSE
-         str_validate := MDSYS.SDO_GEOM.VALIDATE_GEOMETRY_WITH_CONTEXT(
-             sdo_input
-            ,num_tolerance
-         );
-         IF str_validate = 'TRUE'
-         THEN
-            RETURN sdo_input;
-            
-         END IF;
-         
-         -- there are some errors we should not try to correct, I would check for
-         -- them here
+         RETURN sdo_input;
          
       END IF;
       
+      -- there are some errors we should not try to correct, I would check for
+      -- them here
+      
       --------------------------------------------------------------------------
-      -- Step 20
+      -- Step 30
       -- Reproject if requested
       --------------------------------------------------------------------------
       IF p_project_srid IS NOT NULL
@@ -1837,8 +1841,8 @@ AS
       END IF;
       
       --------------------------------------------------------------------------
-      -- Step 30
-      -- Execute the union
+      -- Step 40
+      -- Execute remove duplicate vertices
       --------------------------------------------------------------------------
       sdo_output := dz_sdo_util.scrub_lines(
          MDSYS.SDO_UTIL.REMOVE_DUPLICATE_VERTICES(
@@ -1848,7 +1852,7 @@ AS
       );
       
       --------------------------------------------------------------------------
-      -- Step 40
+      -- Step 50
       -- Reproject if required
       --------------------------------------------------------------------------
       IF p_project_srid IS NOT NULL
@@ -1861,7 +1865,7 @@ AS
       END IF;
       
       --------------------------------------------------------------------------
-      -- Step 50
+      -- Step 60
       -- Return what we got
       --------------------------------------------------------------------------
       RETURN sdo_output;
@@ -1878,10 +1882,10 @@ AS
       ,p_maximum_increment   IN  NUMBER DEFAULT 25
    ) RETURN MDSYS.SDO_GEOMETRY
    AS
-      sdo_input     MDSYS.SDO_GEOMETRY := p_input;
-      sdo_output    MDSYS.SDO_GEOMETRY;
-      num_tolerance NUMBER := p_tolerance; 
-      str_validate  VARCHAR2(4000 Char);
+      sdo_input               MDSYS.SDO_GEOMETRY := p_input;
+      sdo_output              MDSYS.SDO_GEOMETRY;
+      num_tolerance           NUMBER := p_tolerance; 
+      str_validate            VARCHAR2(4000 Char);
       num_tolerance_increment NUMBER := p_tolerance_increment;
       num_maximum_increment   NUMBER := p_maximum_increment;
       num_current_tolerance   NUMBER;
@@ -1924,7 +1928,7 @@ AS
       
       --------------------------------------------------------------------------
       -- Step 20
-      -- Loop around trying to force the union
+      -- Loop around trying to force the removal of duplicates
       --------------------------------------------------------------------------
       num_current_tolerance := num_tolerance;
       FOR i IN 1 .. num_maximum_increment
