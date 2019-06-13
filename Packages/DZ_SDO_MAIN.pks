@@ -6,8 +6,8 @@ AS
    /*
    header: DZ_SDO
      
-   - Build ID: DZBUILDIDDZ
-   - Change Set: DZCHANGESETDZ
+   - Release: %GITRELEASE%
+   - Commit Date: %GITCOMMITDATE%
    
    Utilities for the creation and manipulation of Oracle Spatial geometries.
    
